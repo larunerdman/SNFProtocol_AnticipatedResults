@@ -325,6 +325,11 @@ str(ibd_propagated_labels)
 names(ibd_propagated_labels)[3] = "SNF_group"
 
 ## Check structure of outcomes and confounders
+
+ibd_outcomes
+
+ibd_confounders <- c(ibd_confounders_cat, ibd_confounders_cont)
+
 str(in_ibd[,c("ID", ibd_outcomes)])
 str(in_ibd[,c("ID", ibd_confounders)])
 
@@ -350,6 +355,7 @@ barplot(table(merged_ibd_outcomes$IBD_dx[merged_ibd_outcomes$group == "test"],
 
 merged_ibd_all = merge(ibd_propagated_labels, in_ibd,by = "MRN")
 merged_ibd_all$Cluster = factor(merged_ibd_outcomes$SNF_group, levels = c(1,2), labels = c("Group 1", "Group 2"))
+#! PV clin.hist.features not in my environment
 int_features = c(hist.features,endosc.features,clin.hist.features,otherhist.features)
 
 train_pvals = rep(NA,length(int_features))
