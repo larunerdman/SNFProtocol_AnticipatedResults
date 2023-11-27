@@ -2,7 +2,7 @@
 
 Anticipated results code anbd data from the similarity network fusion (SNF) protocol. 
 
-All examples use inflammatory bowel disorder (IBD) data, with Example 1 and 2 data using a subset of patients and features from [Smith et al., 2023](https://www.jpeds.com/article/S0022-3476(23)00370-0/fulltext) and Example 3 data using data simulated from [Dhaliwal et al, 2021](https://journals.lww.com/jpgn/Fulltext/2021/02000/Accurate_Classification_of_Pediatric_Colonic.18.aspx?context=LatestArticles).
+All examples use inflammatory bowel disorder (IBD) data, with Example 1 and 2 data using a subset of patients and features from [Smith et al, 2023](https://www.jpeds.com/article/S0022-3476(23)00370-0/fulltext) and Example 3 data using data simulated from [Dhaliwal et al, 2021](https://journals.lww.com/jpgn/Fulltext/2021/02000/Accurate_Classification_of_Pediatric_Colonic.18.aspx?context=LatestArticles).
 
 ## Example 1
 
