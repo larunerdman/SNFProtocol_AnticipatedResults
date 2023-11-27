@@ -136,7 +136,6 @@ pairwise_aris <- subsample_pairwise_aris(
   settings_matrix
 )
 
-
 fraction_together <- fraction_clustered_together(
   data_list_subsamples,
   settings_matrix,
@@ -221,6 +220,7 @@ my_clusts2 = my_clusts
 names(my_clusts2) = sub(pattern = "subject_",replacement = "",x = names(my_clusts))
 
 ## match order of sample IDs in outcomes data frame
+# !PV outcomes variable is not in environment
 my_clusts2_ordered = my_clusts2[match(outcomes$sample_ids,names(my_clusts2))]
 
 ## create a data frame of cluster assignments and age at diagnosis
