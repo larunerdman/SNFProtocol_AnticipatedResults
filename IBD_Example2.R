@@ -8,25 +8,22 @@ in_dat = readRDS("IBD_Example1and2.rds")
 ### install metasnf if needed
 # devtools::install_github("BRANCHlab/metasnf")
 library(metasnf)
+library(SNFtool)
+library(ggplot2)
 
 ## generate list of data that will be integrated 
 my_data_list = generate_data_list(
   list(
-    data = in_dat[["Baseline_integration"]],
+    data = in_dat[["Baseline"]],
     name = "BaselineData",
     domain = "Baseline",
     type = "continuous"
   ),
   list(
-    data = in_dat[["Medication_integration"]][c("sample_ids","antiTNF_exp","antiTNF_1st",
-                                                "bio_naive@IFX","combo_IFX","maint_IFX_lvl",
-                                                "combo_ADA","ADA_maint","IM_before_age5","IM_before_age10",
-                                                "IFX_startdose_before_age5","IFX_startdose_before_age10",
-                                                "ADA_startdose_before_age10","VEDO_startdose_before_age5",
-                                                "VEDO_startdose_before_age10")],
+    data = in_dat[["Medication_History"]],
     name = "MedicationData",
     domain = "Medication",
-    type = "categorical"
+    type = "mixed"
   ),
   uid = "sample_ids"
 )
@@ -42,16 +39,19 @@ summarize_dl(data_list = my_data_list)
 ## Define your targets (outcomes)
 str(in_dat[["Outcomes"]])
 names(in_dat[["Outcomes"]])
-cat_outcomes = c("sample_ids", "IBD_dx", "CD_UC_dx","PGA_dx","PGA_dx_1",
-                 "PGA_dx2","CD_loc_dx","L4a_dx","L4b_dx","disease_behavior_dx",
-                 "B1_disease","Perianal_dx","post_CS","endo_healing",
-                 "SFR_52_remission","PGA_52_remission")
+
+
+cat_outcomes = c("sample_ids","IBD_dx","CD_UC_dx","PGA_dx", "extent_dx", "CD_loc_dx",
+                 "L4a_dx", "L4b_dx", "disease_behavior_dx","B1_disease",
+                 "Perianal_dx", "post_CS", "endo_healing",
+                 "SFR_52_remission", "PGA_52_remission")
 cont_outcomes = c("sample_ids","Age_dx")
+
 
 ## Define your confounders
 str(in_dat[["Confounders"]])
 names(in_dat[["Confounders"]])
-cat_confounders = c("sample_ids", "race", "sex", "insurance_provider")
+cat_confounders = c("sample_ids","race", "sex", "insurance_provider")
 cont_confounders = c("sample_ids","dep_index")
 
 ## create list of data you will use to compare with your SNF results
@@ -68,25 +68,12 @@ summarize_target_list(target_list)
 
 
       ###
-      ###  CREATE CORRELATION MATRIX
-      ###
-
-## calculate associations between features that will be integrated
-my_assoc_matrix <- calculate_associations(my_data_list)
-
-## plot heatmap of correlations between features (p-values)
-heatmap <- correlation_pval_heatmap(
-  my_assoc_matrix
-)
-
-
-      ###
       ###  PERFORMING META-SNF
       ###
 
 ## generate a matrix of settings which you will use for each SNF run
 settings_matrix <- generate_settings_matrix(
-  generate_dl_results,
+  my_data_list,
   nrow = 20,
   min_k = 20,
   max_k = 50,
@@ -94,7 +81,7 @@ settings_matrix <- generate_settings_matrix(
 )
 
 ## run SNF with each of the settings
-solutions_matrix = batch_snf(generate_dl_results,
+solutions_matrix = batch_snf(my_data_list,
                              settings_matrix)
 
 ## cluster each of your SNF runs
@@ -133,6 +120,7 @@ silhouette_scores <- calculate_silhouettes(solutions_matrix, similarity_matrices
 ## so just go ahead and run install.packages("clv")
 dunn_indices <- calculate_dunn_indices(solutions_matrix, similarity_matrices)
 
+## Davies-Bouldin index
 db_indices <- calculate_db_indices(solutions_matrix, similarity_matrices)
 
 ## create subsamples of your data to see how SNF changes with subsets of the data
@@ -171,10 +159,10 @@ pvals_heatmap(target_pvals, order = meta_cluster_order)
 #####
 
 ## choose your final clustering solution, here we choose the 9th
-my_sim = similarity_matrices[[9]]
+my_sim = similarity_matrices[[2]]
 
 ## extract your cluster assignments
-my_clusts = unlist(solutions_matrix[9,grep(pattern = "subject",x = names(solutions_matrix))])
+my_clusts = unlist(solutions_matrix[2,grep(pattern = "subject",x = names(solutions_matrix))])
 
 ## plot clusters using SNFtool package function
 displayClustersWithHeatmap(my_sim,my_clusts)
@@ -196,11 +184,11 @@ similarity_matrix_heatmap(
   data_list = target_list,
   left_hm = list(
     "IBD Diagnosis" = "IBD_dx",
-    "IBD Severity" = "PGA_dx2"
+    "IBD Severity" = "PGA_dx",
+    "CD vs UC" = "CD_UC_dx"
   ),
   top_bar = list(
-    "Age at Diagnosis" = "Age_dx",
-    "Deprivation Index" = "dep_index"
+    "Age at Diagnosis" = "Age_dx"
   ),
   # top_hm = list(
   #   "Race" = "race"
@@ -217,10 +205,10 @@ similarity_matrix_heatmap(
 target_pvals <- p_val_select(extended_solutions_matrix)
 
 ## plot with bonferroni line
-manhattan_plot(target_pvals, threshold = 0.05, bonferroni_line = FALSE)
+manhattan_plot(target_pvals[2,], threshold = 0.05, bonferroni_line = FALSE)
 
 ## plot without bonferroni line
-manhattan_plot(target_pvals, threshold = 0.05)
+manhattan_plot(target_pvals[2,], threshold = 0.05, bonferroni_line = TRUE)
 
 
 ####
@@ -242,6 +230,79 @@ head(age_plt_df2)
 ## make clusters into a factor variable
 age_plt_df2$clusters = factor(age_plt_df2$clusters)
 
+theme_set(
+  theme_bw(base_size = 20)
+)
+
 ## plot density of age at diangosis vs. cluster assignment
 ggplot(age_plt_df2, aes(x = Age_dx, col = clusters)) + 
   geom_density(lwd = 1.5)
+
+
+####
+###   CD vs UC plot
+####
+
+## create vector of clusters
+my_clusts2 = my_clusts
+## change names to match sample IDs
+names(my_clusts2) = sub(pattern = "subject_",replacement = "",x = names(my_clusts))
+
+## match order of sample IDs in outcomes data frame
+my_clusts2_ordered = my_clusts2[match(outcomes$sample_ids,names(my_clusts2))]
+
+## create a data frame of cluster assignments and age at diagnosis
+cduc_plt_df2 = data.frame(clusters = my_clusts2_ordered, CDvsUC = outcomes$CD_UC_dx)
+head(cduc_plt_df2)
+
+## make clusters into a factor variable
+cduc_plt_df2$clusters = factor(cduc_plt_df2$clusters)
+cduc_plt_df2$CDvsUC = factor(cduc_plt_df2$CDvsUC, levels = 1:2, 
+                             labels = c("Crohn's Disease","Ulcerative Colitis/IBD-U"))
+str(cduc_plt_df2$CDvsUC)
+
+theme_set(
+  theme_bw(base_size = 20)
+)
+
+## plot density of age at diangosis vs. cluster assignment
+ggplot(cduc_plt_df2, aes(x = clusters, fill = CDvsUC)) + 
+  geom_bar(stat="count",position="dodge")
+
+ggplot(cduc_plt_df2, aes(x = CDvsUC, fill = clusters)) + 
+  geom_bar(stat="count",position="dodge")
+
+
+####
+###   PGA plot
+####
+
+## create vector of clusters
+my_clusts2 = my_clusts
+## change names to match sample IDs
+names(my_clusts2) = sub(pattern = "subject_",replacement = "",x = names(my_clusts))
+
+## match order of sample IDs in outcomes data frame
+my_clusts2_ordered = my_clusts2[match(outcomes$sample_ids,names(my_clusts2))]
+
+## create a data frame of cluster assignments and age at diagnosis
+pga_plt_df2 = data.frame(clusters = my_clusts2_ordered, PGA = outcomes$PGA_dx)
+head(pga_plt_df2)
+
+## make clusters into a factor variable
+pga_plt_df2$clusters = factor(pga_plt_df2$clusters)
+pga_plt_df2$IBDSeverity = factor(pga_plt_df2$PGA, levels = 2:4, 
+                             labels = c("mild","moderate","severe"))
+str(pga_plt_df2$IBDSeverity)
+
+theme_set(
+  theme_bw(base_size = 20)
+)
+
+## plot density of age at diangosis vs. cluster assignment
+ggplot(pga_plt_df2, aes(x = clusters, fill = IBDSeverity)) + 
+  geom_bar(stat="count",position="dodge")
+
+ggplot(pga_plt_df2, aes(x = IBDSeverity, fill = clusters)) + 
+  geom_bar(stat="count",position="dodge")
+
