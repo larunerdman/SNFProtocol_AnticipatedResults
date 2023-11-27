@@ -9,14 +9,14 @@ in_ibd = readRDS("IBD_Example3.rds")
 str(in_ibd)
 dim(in_ibd)
 
-## Distribution of variable of interest: 
+## Distribution of variable of interest:
   ## IBD diagnosis, 1 = ulcerative colitis, 2 = Crohn's disease
 table(in_ibd$other_dx)
 
 
-    ### 
-    ###   SPLIT DATA SET: 14 TEST SAMPLES 
-    ###   
+    ###
+    ###   SPLIT DATA SET: 14 TEST SAMPLES
+    ###
 
 ## Use splitstackshape package to split stratified by diagnosis
 library("splitstackshape")
@@ -35,22 +35,22 @@ ibd_train = in_ibd[!(in_ibd$ID %in% ibd_test$ID),]
 
 ## identify features with only 1 class
 apply(ibd_train, 2, table)
-  
+
     ####
     ### DEFINE FEATURE SPLITS BY SOURCE
     ####
 
 
-hist.features <- c("Granuloma","focal_chronic_duodenitis", "focal_active_colitis", "FEG", 
+hist.features <- c("Granuloma","focal_chronic_duodenitis", "focal_active_colitis", "FEG",
                    "ileitis_mild_cecum", "pattern_involvement_worse.distally",
-                   "basal_plasma_cells", "activity", "gastritis", "duodenitis", 
+                   "basal_plasma_cells", "activity", "gastritis", "duodenitis",
                    "crypt_distortion", "chronic_inflammation")
 endosc.features <- c("classic_backwash", "ileal_inflammation", "reverse_gradient", "small._ulcers_SB",
                      "X5_small_ulcers_colon", "less_5_ulcer_colon", "skip_lesion", "relative_patchiness")
 clin.obs.features <- c("inflammed_tag", "non_bloody_diarrhea")
 
     ###
-    ### CREATE MANHATTAN OF INPUT DATA 
+    ### CREATE MANHATTAN OF INPUT DATA
     ###
 
 hist_assoc = sapply(hist.features, function(x){
@@ -95,7 +95,7 @@ p_out$Feature = factor(p_out$Feature, levels = p_out$Feature)
 ## Create nicer column names
 p_out$Features = c("Granuloma", "Focal Chronic Duodenitis",
                    "Focal Active Colitis","FEG", "Ileitis Mild Cecum",
-                   "Pattern Involvement Worst Distally", 
+                   "Pattern Involvement Worst Distally",
                    "Basal Plasma Cells", "Activity",
                    "Gastritis", "Duodenitis",
                    "Crypt Distortion","Chronic Inflammation",
@@ -112,8 +112,8 @@ library(ggplot2)
 theme_set(
   theme_bw(base_size = 15)
 )
-ggplot(p_out, aes(x = Features, y = neglog10p, col = FeatureGroup)) + 
-  geom_point(size = 3) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+ggplot(p_out, aes(x = Features, y = neglog10p, col = FeatureGroup)) +
+  geom_point(size = 3) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   ylab("-log(p-value)") + geom_hline(yintercept = -log10(0.05), col = "red", lty = 2, lwd = 1)
 
 
@@ -165,7 +165,7 @@ for(i in 1:20){
 names(weights_matrix) = names(p_val_weights)
 
 ibd_solutions_matrix = batch_snf(ibd_dl_results,
-                             ibd_settings_matrix, 
+                             ibd_settings_matrix,
                              weights_matrix = weights_matrix)
 
 
@@ -206,7 +206,7 @@ ibd_target_list <- generate_target_list(
 
 summarize_target_list(ibd_target_list)
 
-ibd_extended_solutions_matrix <- extend_solutions(ibd_solutions_matrix, 
+ibd_extended_solutions_matrix <- extend_solutions(ibd_solutions_matrix,
                                                   ibd_target_list, cat_test = "fisher_exact")
 
 ibd_target_pvals <- p_val_select(ibd_extended_solutions_matrix)
@@ -235,11 +235,11 @@ similarity_matrix_heatmap(
 
 
 ####
-###   MANHATTAN PLOT OF EACH INTEGRATED FEATURE VS. THE SELECTED CLUSTER SOLUTION 
+###   MANHATTAN PLOT OF EACH INTEGRATED FEATURE VS. THE SELECTED CLUSTER SOLUTION
 ####
 
-## Test selected 
-ibd_features_extended_solutions_matrix <- extend_solutions(ibd_extended_solutions_matrix[12, ], 
+## Test selected
+ibd_features_extended_solutions_matrix <- extend_solutions(ibd_extended_solutions_matrix[12, ],
                                                            ibd_data_list, cat_test = "fisher_exact")
 
 ibd_feature_snf_pvals <- p_val_select(ibd_features_extended_solutions_matrix)
@@ -378,11 +378,11 @@ tr_test_pval_df = data.frame(Features = names(test_pvals),
                              Test_p = test_pvals)
 tr_test_pval_df = tr_test_pval_df[!is.na(tr_test_pval_df$Features),]
 
-ggplot(tr_test_pval_df, aes(x = Train_p, y = Test_p)) + 
+ggplot(tr_test_pval_df, aes(x = Train_p, y = Test_p)) +
   geom_point(size=5) + ylim(0,1)
 
 
-## which test feature was most significant? 
+## which test feature was most significant?
 
 tr_test_pval_df[as.numeric(tr_test_pval_df$Test_p) < 0.99 & !is.na(tr_test_pval_df$Test_p),]
 
