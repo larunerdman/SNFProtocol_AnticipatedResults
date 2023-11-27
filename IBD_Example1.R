@@ -155,7 +155,7 @@ theme_set(
   theme_minimal(base_size = 5)
 )
 
-ggplot(meds_bin.mlt, aes(x = variable, y = sample_ids, fill = value)) +
+ggplot(meds.mlt, aes(x = variable, y = sample_ids, fill = value)) +
   geom_tile(show.legend = FALSE) +
   scale_fill_gradientn(colours = c("blue","white","red"))
 
