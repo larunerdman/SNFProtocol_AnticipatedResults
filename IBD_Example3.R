@@ -11,7 +11,7 @@ dim(in_ibd)
 
 ## Distribution of variable of interest:
   ## IBD diagnosis, 1 = ulcerative colitis, 2 = Crohn's disease
-table(in_ibd$other_dx)
+table(in_ibd$IBD_dx)
 
 
     ###
@@ -347,48 +347,4 @@ barplot(table(merged_ibd_outcomes$IBD_dx[merged_ibd_outcomes$group == "test"],
         beside = TRUE, col = c("firebrick","deeppink2"))
 
 
-
-
-####
-###   ADDITIONAL ANALYSIS COMPARING FEATURE SIGNFICANCE BETWEEN TRAIN AND TEST
-####
-
-merged_ibd_all = merge(ibd_propagated_labels, in_ibd,by = "MRN")
-merged_ibd_all$Cluster = factor(merged_ibd_outcomes$SNF_group, levels = c(1,2), labels = c("Group 1", "Group 2"))
-#! PV clin.hist.features not in my environment
-int_features = c(hist.features,endosc.features,clin.hist.features,otherhist.features)
-
-train_pvals = rep(NA,length(int_features))
-
-for(i in 1:length(train_pvals)){
-  train_pvals[i] = chisq.test(merged_ibd_all$SNF_group[merged_ibd_all$group == "train"],
-                              merged_ibd_all[merged_ibd_all$group == "train",int_features[i]])$p.value
-}
-
-train_pvals = unlist(train_pvals)
-names(train_pvals) = int_features
-
-test_pvals = rep(NA,length(int_features))
-
-for(i in 1:length(train_pvals)){
-  test_pvals[i] = chisq.test(merged_ibd_all$SNF_group[merged_ibd_all$group == "test"],
-                             merged_ibd_all[merged_ibd_all$group == "test",int_features[i]])$p.value
-}
-
-test_pvals = unlist(test_pvals)
-names(test_pvals) = int_features
-
-
-tr_test_pval_df = data.frame(Features = names(test_pvals),
-                             Train_p = train_pvals,
-                             Test_p = test_pvals)
-tr_test_pval_df = tr_test_pval_df[!is.na(tr_test_pval_df$Features),]
-
-ggplot(tr_test_pval_df, aes(x = Train_p, y = Test_p)) +
-  geom_point(size=5) + ylim(0,1)
-
-
-## which test feature was most significant?
-
-tr_test_pval_df[as.numeric(tr_test_pval_df$Test_p) < 0.99 & !is.na(tr_test_pval_df$Test_p),]
 
