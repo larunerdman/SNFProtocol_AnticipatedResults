@@ -18,7 +18,7 @@ library(metasnf)
 
 setwd("C:/Users/ERDP5G/Desktop/Manuscripts/SNFProtocol/")
 
-## This data is a list with separate data frames for each set of 
+## This data is a list with separate data frames for each set of
   ## features to be integrated or compared to the SNF solution
 ibd_list = readRDS("IBD_Example1and2.rds")
 
@@ -66,7 +66,7 @@ heatmap <- correlation_pval_heatmap(
 
 
 ###
-###   RUN SNF using SNFtool package 
+###   RUN SNF using SNFtool package
 ###     (SNF will be run using metasnf in Example 2)
 ###
 
@@ -79,7 +79,7 @@ meds = ibd_list[["Medication_History"]]
 names(baseline)
 names(meds)
 
-### confirm each data source contains the same samples 
+### confirm each data source contains the same samples
 identical(baseline$sample_ids, meds$sample_ids)
 
 ### Now extract target data (outcomes) and confounders
@@ -93,16 +93,16 @@ identical(baseline$sample_ids, outcomes$sample_ids)
 confounders = ibd_list[["Confounders"]]
 ### inspect contents of confounder data
 names(confounders)
-### check that the sample IDs of the confound data frame are equivalent 
+### check that the sample IDs of the confound data frame are equivalent
   ### to those in the baseline data
 identical(baseline$sample_ids, confounders$sample_ids)
 
-##Set the hyper-parameters defaults for your SNF run : 
-K=20 ##number of neighbors,must be greater than 1. usually(10~30) 
-alpha=0.5 ##hyperparameter, usually (0.3~0.8) 
+##Set the hyper-parameters defaults for your SNF run :
+K=20 ##number of neighbors,must be greater than 1. usually(10~30)
+alpha=0.5 ##hyperparameter, usually (0.3~0.8)
 T=20 ###Number of Iterations, usually (10~50)
 
-### Normalize baseline data 
+### Normalize baseline data
 baseline_norm = standardNormalization(baseline[,-1])
 str(baseline_norm)
 baseline_dist = dist2(X = baseline_norm, C = baseline_norm)
@@ -129,7 +129,7 @@ displayClustersWithHeatmap(meds_aff, group = meds_clust5,
 
 
 ###
-###   Plotting input data 
+###   Plotting input data
 ###
 
   ## plot baseline
@@ -142,7 +142,7 @@ theme_set(
   theme_minimal(base_size = 5)
 )
 
-ggplot(bl.mlt, aes(x = Var2, y = Var1, fill = value)) + 
+ggplot(bl.mlt, aes(x = Var2, y = Var1, fill = value)) +
   geom_tile(show.legend = FALSE) +
   scale_fill_gradientn(colours = c("blue","white","red"))
 
@@ -155,7 +155,7 @@ theme_set(
   theme_minimal(base_size = 5)
 )
 
-ggplot(meds.mlt, aes(x = variable, y = sample_ids, fill = value)) + 
+ggplot(meds.mlt, aes(x = variable, y = sample_ids, fill = value)) +
   geom_tile(show.legend = FALSE) +
   scale_fill_gradientn(colours = c("white","red","blue"))
 
@@ -164,12 +164,12 @@ ggplot(meds.mlt, aes(x = variable, y = sample_ids, fill = value)) +
 ###   SNF integration
 ###
 
-## double check that you still have the same number of patients in your 
+## double check that you still have the same number of patients in your
   ## similarity matrices (311 and 311)
 dim(baseline_aff)
 dim(meds_aff)
 
-## SNF step 
+## SNF step
 ibd_snf = SNF(list(baseline_aff,meds_aff),K = K,t = T)
 
 estimateNumberOfClustersGivenGraph(ibd_snf,NUMC = 2:5)
@@ -179,9 +179,9 @@ clusters3 = spectralClustering(ibd_snf,K = 3)
 clusters4 = spectralClustering(ibd_snf,K = 4)
 clusters5 = spectralClustering(ibd_snf,K = 5)
 
-displayClustersWithHeatmap(ibd_snf, group = clusters2, 
+displayClustersWithHeatmap(ibd_snf, group = clusters2,
                            col = brewer.pal(name = "OrRd",n =9)[c(1,2,5,6,7,8,9)])
-displayClustersWithHeatmap(ibd_snf, group = clusters3, 
+displayClustersWithHeatmap(ibd_snf, group = clusters3,
                            col = brewer.pal(name = "OrRd",n =9)[c(1,2,5,6,7,8,9)])
 
 ###
@@ -189,20 +189,20 @@ displayClustersWithHeatmap(ibd_snf, group = clusters3,
 ###
 
 alluv_clust_df = data.frame(clusters2,clusters3,clusters4,clusters5)
-## get frequencies of each combination 
+## get frequencies of each combination
 
-## make below into a data frame with frequencies of each combo: 
+## make below into a data frame with frequencies of each combo:
 # table(paste0(clusters2,":",clusters3,":",clusters4,":",clusters5))
 
 
 make_all_df = function(clust_df){
-  
+
   count_tbl = table(apply(clust_df,1,function(x){paste(x, collapse = ":")}))
-  
+
   out_df = data.frame(matrix(nrow = length(count_tbl),ncol = ncol(clust_df)))
   names(out_df) = paste0("Cluster",2:(ncol(clust_df)+1))
   out_df$Freq = NA
-  
+
   for(i in 1:length(count_tbl)){
     # browser()
     out_df[i,] = c(unlist(strsplit(names(count_tbl)[i],split = ":")),count_tbl[i])
@@ -217,11 +217,11 @@ head(alluv_df)
 
 library(ggalluvial)
 
-ggplot(data = alluv_df, 
-       aes(axis1 = Cluster2, axis2 = Cluster3, 
+ggplot(data = alluv_df,
+       aes(axis1 = Cluster2, axis2 = Cluster3,
            axis3 = Cluster4, axis4 = Cluster5, y = Freq))+
-  scale_x_discrete(limits = c("Cluster2", "Cluster3", 
-                              "Cluster4","Cluster5"), expand = c(.2, .05)) + 
+  scale_x_discrete(limits = c("Cluster2", "Cluster3",
+                              "Cluster4","Cluster5"), expand = c(.2, .05)) +
   xlab("Cluster Assignment") +
   geom_alluvium(aes(fill = Cluster5)) +
   geom_stratum() +
@@ -265,16 +265,16 @@ names(p_df) = c("Features","p.value2","p.value3","p.value4","p.value5")
 p_df$Features = all_vars
 
 for(i in 1:nrow(p_df)){
-  
+
   feature = p_df$Features[i]
-  
+
   if(feature %in% cat_vars){
     if(feature %in% cat_outcomes){
       p_df$p.value2[i] = chisq.test(outcomes[,feature],clusters2)$p.val
       p_df$p.value3[i] = chisq.test(outcomes[,feature],clusters3)$p.val
       p_df$p.value4[i] = chisq.test(outcomes[,feature],clusters4)$p.val
       p_df$p.value5[i] = chisq.test(outcomes[,feature],clusters5)$p.val
-      
+
       # p_df$p.value2[i] = fisher.test(outcomes[,feature],clusters2)$p.val
       # p_df$p.value3[i] = fisher.test(outcomes[,feature],clusters3)$p.val
       # p_df$p.value4[i] = fisher.test(outcomes[,feature],clusters4)$p.val
@@ -283,11 +283,11 @@ for(i in 1:nrow(p_df)){
       p_df$p.value3[i] = chisq.test(confounders[,feature],clusters3)$p.val
       p_df$p.value4[i] = chisq.test(confounders[,feature],clusters4)$p.val
       p_df$p.value5[i] = chisq.test(confounders[,feature],clusters5)$p.val
-      
+
       # p_df$p.value2[i] = fisher.test(confounders[,feature],clusters2)$p.val
       # p_df$p.value3[i] = fisher.test(confounders[,feature],clusters3)$p.val
       # p_df$p.value4[i] = fisher.test(confounders[,feature],clusters4)$p.val
-    }    
+    }
   } else{
     if(feature %in% cont_outcomes){
       p_df$p.value2[i] = t.test(outcomes[,feature],clusters2)$p.val
@@ -321,12 +321,12 @@ theme_set(
   theme_bw(base_size = 15)
 )
 
-ggplot(p_df.mlt, aes(x = Features, y = value, col = variable)) + 
-  geom_point(size = 2) + 
-  scale_color_manual(values = c("blue","darkorchid","forestgreen","deeppink2")) + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
-  geom_hline(yintercept = -log10(0.05), col = "red", lty = 2) + 
-  geom_hline(yintercept = -log10(0.05/19), col = "black", lty = 2) + 
+ggplot(p_df.mlt, aes(x = Features, y = value, col = variable)) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c("blue","darkorchid","forestgreen","deeppink2")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  geom_hline(yintercept = -log10(0.05), col = "red", lty = 2) +
+  geom_hline(yintercept = -log10(0.05/19), col = "black", lty = 2) +
   ylab("-log10(p)")
 
 
@@ -357,10 +357,10 @@ names(pga_plt_df) = c("Cluster","PGA")
 pga_plt_df$Cluster = factor(pga_plt_df$Cluster)
 pga_plt_df$PGA = factor(pga_plt_df$PGA)
 
-ggplot(pga_plt_df, aes(x = PGA, fill = Cluster)) + 
+ggplot(pga_plt_df, aes(x = PGA, fill = Cluster)) +
   geom_bar(position = "dodge")
 
-ggplot(pga_plt_df, aes(fill = PGA, x = Cluster)) + 
+ggplot(pga_plt_df, aes(fill = PGA, x = Cluster)) +
   geom_bar(position = "dodge")
 
 pga_plt_df = data.frame(clusters5, outcomes$PGA_dx)
@@ -368,10 +368,10 @@ names(pga_plt_df) = c("Cluster","PGA")
 pga_plt_df$Cluster = factor(pga_plt_df$Cluster)
 pga_plt_df$PGA = factor(pga_plt_df$PGA)
 
-ggplot(pga_plt_df, aes(x = PGA, fill = Cluster)) + 
+ggplot(pga_plt_df, aes(x = PGA, fill = Cluster)) +
   geom_bar(position = "dodge")
 
-ggplot(pga_plt_df, aes(fill = PGA, x = Cluster)) + 
+ggplot(pga_plt_df, aes(fill = PGA, x = Cluster)) +
   geom_bar(position = "dodge")
 
 
@@ -383,10 +383,10 @@ ibd_plt_df$IBDdiagnosis = factor(ibd_plt_df$IBDdiagnosis)
 
 table(ibd_plt_df$Cluster,ibd_plt_df$IBDdiagnosis)
 
-ggplot(ibd_plt_df, aes(x = IBDdiagnosis, fill = Cluster)) + 
+ggplot(ibd_plt_df, aes(x = IBDdiagnosis, fill = Cluster)) +
   geom_bar(position = "dodge")
 
-ggplot(ibd_plt_df, aes(fill = IBDdiagnosis, x = Cluster)) + 
+ggplot(ibd_plt_df, aes(fill = IBDdiagnosis, x = Cluster)) +
   geom_bar(position = "dodge")
 
 ibd_plt_df = data.frame(clusters5, outcomes$IBD_dx)
@@ -394,10 +394,10 @@ names(ibd_plt_df) = c("Cluster","IBDdiagnosis")
 ibd_plt_df$Cluster = factor(ibd_plt_df$Cluster)
 ibd_plt_df$IBDdiagnosis = factor(ibd_plt_df$IBDdiagnosis)
 
-ggplot(ibd_plt_df, aes(x = IBDdiagnosis, fill = Cluster)) + 
+ggplot(ibd_plt_df, aes(x = IBDdiagnosis, fill = Cluster)) +
   geom_bar(position = "dodge")
 
-ggplot(ibd_plt_df, aes(fill = IBDdiagnosis, x = Cluster)) + 
+ggplot(ibd_plt_df, aes(fill = IBDdiagnosis, x = Cluster)) +
   geom_bar(position = "dodge")
 
 ## CD/UC
@@ -408,10 +408,10 @@ cduc_plt_df$CDvsUC = factor(cduc_plt_df$CDvsUC)
 
 table(cduc_plt_df$Cluster,cduc_plt_df$CDvsUC)
 
-ggplot(cduc_plt_df, aes(x = CDvsUC, fill = Cluster)) + 
+ggplot(cduc_plt_df, aes(x = CDvsUC, fill = Cluster)) +
   geom_bar(position = "dodge")
 
-ggplot(cduc_plt_df, aes(fill = CDvsUC, x = Cluster)) + 
+ggplot(cduc_plt_df, aes(fill = CDvsUC, x = Cluster)) +
   geom_bar(position = "dodge")
 
 cduc_plt_df = data.frame(clusters5, outcomes$CD_UC_dx)
@@ -421,10 +421,10 @@ cduc_plt_df$CDvsUC = factor(cduc_plt_df$CDvsUC)
 
 table(cduc_plt_df$Cluster,cduc_plt_df$CDvsUC)
 
-ggplot(cduc_plt_df, aes(x = CDvsUC, fill = Cluster)) + 
+ggplot(cduc_plt_df, aes(x = CDvsUC, fill = Cluster)) +
   geom_bar(position = "dodge")
 
-ggplot(cduc_plt_df, aes(fill = CDvsUC, x = Cluster)) + 
+ggplot(cduc_plt_df, aes(fill = CDvsUC, x = Cluster)) +
   geom_bar(position = "dodge")
 
 
