@@ -123,26 +123,6 @@ dunn_indices <- calculate_dunn_indices(solutions_matrix, similarity_matrices)
 ## Davies-Bouldin index
 db_indices <- calculate_db_indices(solutions_matrix, similarity_matrices)
 
-## create subsamples of your data to see how SNF changes with subsets of the data
-data_list_subsamples <- subsample_data_list(
-  my_data_list,
-  n_subsamples = 30, # calculate 30 subsamples
-  subsample_fraction = 0.8 # for each subsample, use random 80% of patients
-)
-
-## Find adjusted Rand index similarity of subsampled SNF solutions
-pairwise_aris <- subsample_pairwise_aris(
-  data_list_subsamples,
-  settings_matrix
-)
-
-
-fraction_together <- fraction_clustered_together(
-  data_list_subsamples,
-  settings_matrix,
-  solutions_matrix
-)
-
 ## find p-values of all your SNF cluster solutions and their associations
 ## with all the target variables -- outcomes and confounders here
 extended_solutions_matrix <- extend_solutions(solutions_matrix, target_list)
@@ -214,6 +194,9 @@ manhattan_plot(target_pvals[2,], threshold = 0.05, bonferroni_line = TRUE)
 ####
 ###   Age at Dx Plot
 ####
+
+## create data frame of outcomes
+outcomes = in_dat[["Outcomes"]]
 
 ## create vector of clusters
 my_clusts2 = my_clusts
