@@ -9,14 +9,14 @@ in_ibd = readRDS("IBD_Example3.rds")
 str(in_ibd)
 dim(in_ibd)
 
-## Distribution of variable of interest:
+## Distribution of variable of interest: 
   ## IBD diagnosis, 1 = ulcerative colitis, 2 = Crohn's disease
 table(in_ibd$IBD_dx)
 
 
-    ###
-    ###   SPLIT DATA SET: 14 TEST SAMPLES
-    ###
+    ### 
+    ###   SPLIT DATA SET: 14 TEST SAMPLES 
+    ###   
 
 ## Use splitstackshape package to split stratified by diagnosis
 library("splitstackshape")
@@ -35,22 +35,22 @@ ibd_train = in_ibd[!(in_ibd$ID %in% ibd_test$ID),]
 
 ## identify features with only 1 class
 apply(ibd_train, 2, table)
-
+  
     ####
     ### DEFINE FEATURE SPLITS BY SOURCE
     ####
 
 
-hist.features <- c("Granuloma","focal_chronic_duodenitis", "focal_active_colitis", "FEG",
+hist.features <- c("Granuloma","focal_chronic_duodenitis", "focal_active_colitis", "FEG", 
                    "ileitis_mild_cecum", "pattern_involvement_worse.distally",
-                   "basal_plasma_cells", "activity", "gastritis", "duodenitis",
+                   "basal_plasma_cells", "activity", "gastritis", "duodenitis", 
                    "crypt_distortion", "chronic_inflammation")
 endosc.features <- c("classic_backwash", "ileal_inflammation", "reverse_gradient", "small._ulcers_SB",
                      "X5_small_ulcers_colon", "less_5_ulcer_colon", "skip_lesion", "relative_patchiness")
 clin.obs.features <- c("inflammed_tag", "non_bloody_diarrhea")
 
     ###
-    ### CREATE MANHATTAN OF INPUT DATA
+    ### CREATE MANHATTAN OF INPUT DATA 
     ###
 
 hist_assoc = sapply(hist.features, function(x){
@@ -95,7 +95,7 @@ p_out$Feature = factor(p_out$Feature, levels = p_out$Feature)
 ## Create nicer column names
 p_out$Features = c("Granuloma", "Focal Chronic Duodenitis",
                    "Focal Active Colitis","FEG", "Ileitis Mild Cecum",
-                   "Pattern Involvement Worst Distally",
+                   "Pattern Involvement Worst Distally", 
                    "Basal Plasma Cells", "Activity",
                    "Gastritis", "Duodenitis",
                    "Crypt Distortion","Chronic Inflammation",
@@ -112,9 +112,10 @@ library(ggplot2)
 theme_set(
   theme_bw(base_size = 15)
 )
-ggplot(p_out, aes(x = Features, y = neglog10p, col = FeatureGroup)) +
-  geom_point(size = 3) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  ylab("-log(p-value)") + geom_hline(yintercept = -log10(0.05), col = "red", lty = 2, lwd = 1)
+ggplot(p_out, aes(x = Features, y = neglog10p, col = FeatureGroup)) + 
+  geom_point(size = 3) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+  ylab("-log(p-value)") + geom_hline(yintercept = -log10(0.05), col = "red", lty = 2, lwd = 1) + 
+  guides(color = guide_legend(title = "Data Source"))
 
 
 ### split data and update code below
@@ -165,7 +166,7 @@ for(i in 1:20){
 names(weights_matrix) = names(p_val_weights)
 
 ibd_solutions_matrix = batch_snf(ibd_dl_results,
-                             ibd_settings_matrix,
+                             ibd_settings_matrix, 
                              weights_matrix = weights_matrix)
 
 
@@ -206,7 +207,7 @@ ibd_target_list <- generate_target_list(
 
 summarize_target_list(ibd_target_list)
 
-ibd_extended_solutions_matrix <- extend_solutions(ibd_solutions_matrix,
+ibd_extended_solutions_matrix <- extend_solutions(ibd_solutions_matrix, 
                                                   ibd_target_list, cat_test = "fisher_exact")
 
 ibd_target_pvals <- p_val_select(ibd_extended_solutions_matrix)
@@ -235,18 +236,69 @@ similarity_matrix_heatmap(
 
 
 ####
-###   MANHATTAN PLOT OF EACH INTEGRATED FEATURE VS. THE SELECTED CLUSTER SOLUTION
+###   MANHATTAN PLOT OF EACH INTEGRATED FEATURE VS. THE SELECTED CLUSTER SOLUTION 
 ####
 
-## Test selected
-ibd_features_extended_solutions_matrix <- extend_solutions(ibd_extended_solutions_matrix[12, ],
+## Test selected 
+ibd_features_extended_solutions_matrix <- extend_solutions(ibd_extended_solutions_matrix[12, ], 
                                                            ibd_data_list, cat_test = "fisher_exact")
 
 ibd_feature_snf_pvals <- p_val_select(ibd_features_extended_solutions_matrix)
 
-manhattan_plot(ibd_feature_snf_pvals, threshold = 0.05, bonferroni_line = FALSE)
+### to automatically plot with metasnf package
+# manhattan_plot(ibd_feature_snf_pvals, threshold = 0.05, bonferroni_line = FALSE)
 
 # manhattan_plot(target_pvals, threshold = 0.05)
+
+### a more descriptive manhattan plot 
+
+cluster_assoc = data.frame(pvals = unlist(ibd_feature_snf_pvals[2:length(ibd_feature_snf_pvals)]),
+                           features = unlist(names(ibd_feature_snf_pvals)[2:length(ibd_feature_snf_pvals)]),
+                           Features = c("IBD_dx", "Provider", "Age_at_dx",                               
+                                        "Granuloma", "Focal Chronic Duodenitis",
+                                        "Focal Active Colitis","FEG", "Ileitis Mild Cecum",
+                                        "Pattern Involvement Worst Distally", 
+                                        "Basal Plasma Cells", "Activity",
+                                        "Gastritis", "Duodenitis",
+                                        "Crypt Distortion","Chronic Inflammation",
+                                        "Classic Backwash","Ileal Inflammation",
+                                        "Reverse Gradient", "Small Ulcers SB", "Small Colonic Ulcers",
+                                        "<5 Colon Ulcers", "Skip Lesion",
+                                        "Relative Patchiness", "Inflammed Tag",
+                                        "Non-Bloody Diarrhea"), 
+                           FeatureGroups = c("Target","Confounder","Confounder",
+                                             "Histology","Histology",
+                                             "Histology","Histology",
+                                             "Histology","Histology",
+                                             "Histology","Histology",
+                                             "Histology","Histology",
+                                             "Histology","Histology",
+                                             "Endoscopy","Endoscopy",
+                                             
+                                             "Endoscopy","Endoscopy",
+
+                                             "Endoscopy","Endoscopy",
+                                             "Endoscopy","Endoscopy",
+                                             
+                                             "Clinical Observation","Clinical Observation"))
+
+cluster_assoc$Features = factor(cluster_assoc$Features,
+                                levels = cluster_assoc$Features)
+
+cluster_assoc$FeatureGroups = factor(cluster_assoc$FeatureGroups, 
+                                     levels = c("Target","Confounder",
+                                                "Clinical Observation","Endoscopy","Histology"))
+cluster_assoc$nlogp = -log10(cluster_assoc$pvals)
+
+str(cluster_assoc)
+
+ggplot(data = cluster_assoc, aes(x = Features, y = nlogp, col = FeatureGroups)) + 
+  geom_point(size = 3) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+  ylab("-log(p-value)") + geom_hline(yintercept = -log10(0.05), col = "red", lty = 2, lwd = 1) + 
+  scale_color_manual(values = c("#C77CFF","#C68613",
+                                "#F8766D","#0CB702","#00A9FF"),name = "Data Source") + 
+  xlab("Target variable, Confounding variables, Integrated features")
+
 
 ###
 ###     LABEL PROPAGATION
@@ -325,11 +377,6 @@ str(ibd_propagated_labels)
 names(ibd_propagated_labels)[3] = "SNF_group"
 
 ## Check structure of outcomes and confounders
-
-ibd_outcomes
-
-ibd_confounders <- c(ibd_confounders_cat, ibd_confounders_cont)
-
 str(in_ibd[,c("ID", ibd_outcomes)])
 str(in_ibd[,c("ID", ibd_confounders)])
 

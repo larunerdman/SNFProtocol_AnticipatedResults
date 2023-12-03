@@ -2,7 +2,7 @@
 ## set working directory (file where your data is)
 setwd("C:/Users/ERDP5G/Desktop/Manuscripts/SNFProtocol/")
 
-## read in example data
+## read in example data 
 in_dat = readRDS("IBD_Example1and2.rds")
 
 ### install metasnf if needed
@@ -11,7 +11,7 @@ library(metasnf)
 library(SNFtool)
 library(ggplot2)
 
-## generate list of data that will be integrated
+## generate list of data that will be integrated 
 my_data_list = generate_data_list(
   list(
     data = in_dat[["Baseline"]],
@@ -33,7 +33,7 @@ summarize_dl(data_list = my_data_list)
 
 
       ###
-      ### DEFINING TARGET VARIABLES AND CONFOUNDER VARIABLES
+      ### DEFINING TARGET VARIABLES AND CONFOUNDER VARIABLES 
       ###
 
 ## Define your targets (outcomes)
@@ -96,7 +96,7 @@ adjusted_rand_index_heatmap(solutions_matrix_aris)
 ## extract order from SNF similarity heatmap (similarity of clustering solutions)
 meta_cluster_order <- get_heatmap_order(solutions_matrix_aris)
 
-## plot settings matrix with same order at SNF similarity
+## plot settings matrix with same order at SNF similarity 
 settings_matrix_heatmap(settings_matrix, order = meta_cluster_order)
 
 ## run SNF getting each of the SNF similarity matrices using each setting
@@ -109,7 +109,7 @@ batch_snf_results <- batch_snf(
 ## extract the solutions matrix (same as what you have above)
 solutions_matrix <- batch_snf_results$"solutions_matrix"
 
-## extract all the similarity matrices -- in case you'd like to plot a heatmap or
+## extract all the similarity matrices -- in case you'd like to plot a heatmap or 
   ## analyze the similarity matrix itself
 similarity_matrices <- batch_snf_results$"similarity_matrices"
 
@@ -122,7 +122,6 @@ dunn_indices <- calculate_dunn_indices(solutions_matrix, similarity_matrices)
 
 ## Davies-Bouldin index
 db_indices <- calculate_db_indices(solutions_matrix, similarity_matrices)
-
 
 ## find p-values of all your SNF cluster solutions and their associations
 ## with all the target variables -- outcomes and confounders here
@@ -205,7 +204,6 @@ my_clusts2 = my_clusts
 names(my_clusts2) = sub(pattern = "subject_",replacement = "",x = names(my_clusts))
 
 ## match order of sample IDs in outcomes data frame
-# !PV outcomes variable is not in environment
 my_clusts2_ordered = my_clusts2[match(outcomes$sample_ids,names(my_clusts2))]
 
 ## create a data frame of cluster assignments and age at diagnosis
@@ -220,7 +218,7 @@ theme_set(
 )
 
 ## plot density of age at diangosis vs. cluster assignment
-ggplot(age_plt_df2, aes(x = Age_dx, col = clusters)) +
+ggplot(age_plt_df2, aes(x = Age_dx, col = clusters)) + 
   geom_density(lwd = 1.5)
 
 
@@ -242,7 +240,7 @@ head(cduc_plt_df2)
 
 ## make clusters into a factor variable
 cduc_plt_df2$clusters = factor(cduc_plt_df2$clusters)
-cduc_plt_df2$CDvsUC = factor(cduc_plt_df2$CDvsUC, levels = 1:2,
+cduc_plt_df2$CDvsUC = factor(cduc_plt_df2$CDvsUC, levels = 1:2, 
                              labels = c("Crohn's Disease","Ulcerative Colitis/IBD-U"))
 str(cduc_plt_df2$CDvsUC)
 
@@ -251,10 +249,10 @@ theme_set(
 )
 
 ## plot density of age at diangosis vs. cluster assignment
-ggplot(cduc_plt_df2, aes(x = clusters, fill = CDvsUC)) +
+ggplot(cduc_plt_df2, aes(x = clusters, fill = CDvsUC)) + 
   geom_bar(stat="count",position="dodge")
 
-ggplot(cduc_plt_df2, aes(x = CDvsUC, fill = clusters)) +
+ggplot(cduc_plt_df2, aes(x = CDvsUC, fill = clusters)) + 
   geom_bar(stat="count",position="dodge")
 
 
@@ -276,7 +274,7 @@ head(pga_plt_df2)
 
 ## make clusters into a factor variable
 pga_plt_df2$clusters = factor(pga_plt_df2$clusters)
-pga_plt_df2$IBDSeverity = factor(pga_plt_df2$PGA, levels = 2:4,
+pga_plt_df2$IBDSeverity = factor(pga_plt_df2$PGA, levels = 2:4, 
                              labels = c("mild","moderate","severe"))
 str(pga_plt_df2$IBDSeverity)
 
@@ -285,9 +283,9 @@ theme_set(
 )
 
 ## plot density of age at diangosis vs. cluster assignment
-ggplot(pga_plt_df2, aes(x = clusters, fill = IBDSeverity)) +
+ggplot(pga_plt_df2, aes(x = clusters, fill = IBDSeverity)) + 
   geom_bar(stat="count",position="dodge")
 
-ggplot(pga_plt_df2, aes(x = IBDSeverity, fill = clusters)) +
+ggplot(pga_plt_df2, aes(x = IBDSeverity, fill = clusters)) + 
   geom_bar(stat="count",position="dodge")
 
