@@ -25,7 +25,7 @@ ibd_list = readRDS("IBD_Example1and2.rds")
 names(ibd_list)
 
 ###
-###  CREATE CORRELATION MATRIX USING metasnf PACKAGE
+###  Optional: CREATE CORRELATION MATRIX USING metasnf PACKAGE (Figure 4a)
 ###
 
 ## separate data types in data list
@@ -57,13 +57,12 @@ datatype_specific_data_list = generate_data_list(
 )
 
 ## calculate associations between features that will be integrated
-my_assoc_matrix <- calculate_associations(datatype_specific_data_list)
+my_assoc_matrix <- calc_assoc_pval_matrix(datatype_specific_data_list)
 
 ## plot heatmap of correlations between features (p-values)
-heatmap <- correlation_pval_heatmap(
+heatmap <- assoc_pval_heatmap(
   my_assoc_matrix
 )
-
 
 ###
 ###   RUN SNF using SNFtool package 
@@ -333,8 +332,36 @@ ggplot(p_df.mlt, aes(x = Features, y = value, col = variable)) +
 
 
 ####
-###   GROUP PLOTS  -- ADD IBD DX OR CD/UC DX
+###   GROUP PLOTS  
 ####
+
+## CD/UC
+cduc_plt_df = data.frame(clusters2, outcomes$CD_UC_dx)
+names(cduc_plt_df) = c("Cluster","CDvsUC")
+cduc_plt_df$Cluster = factor(cduc_plt_df$Cluster)
+cduc_plt_df$CDvsUC = factor(cduc_plt_df$CDvsUC)
+
+table(cduc_plt_df$Cluster,cduc_plt_df$CDvsUC)
+
+ggplot(cduc_plt_df, aes(x = CDvsUC, fill = Cluster)) + 
+  geom_bar(position = "dodge")
+
+ggplot(cduc_plt_df, aes(fill = CDvsUC, x = Cluster)) + 
+  geom_bar(position = "dodge")
+
+cduc_plt_df = data.frame(clusters5, outcomes$CD_UC_dx)
+names(cduc_plt_df) = c("Cluster","CDvsUC")
+cduc_plt_df$Cluster = factor(cduc_plt_df$Cluster)
+cduc_plt_df$CDvsUC = factor(cduc_plt_df$CDvsUC)
+
+table(cduc_plt_df$Cluster,cduc_plt_df$CDvsUC)
+
+ggplot(cduc_plt_df, aes(x = CDvsUC, fill = Cluster)) + 
+  geom_bar(position = "dodge")
+
+ggplot(cduc_plt_df, aes(fill = CDvsUC, x = Cluster)) + 
+  geom_bar(position = "dodge")
+
 
 ## age
 
@@ -351,6 +378,25 @@ age_plt_df$Cluster = factor(age_plt_df$Cluster)
 
 ggplot(age_plt_df, aes(x = AgeatDiagnosis, col = Cluster)) +
   geom_density(lwd = 1.5)
+
+## Dep index
+
+dep_plt_df = data.frame(clusters2, confounders$dep_index)
+names(dep_plt_df) = c("Cluster","DeprivationIndex")
+dep_plt_df$Cluster = factor(dep_plt_df$Cluster)
+# dep_plt_df$DeprivationIndex = factor(dep_plt_df$DeprivationIndex)
+
+ggplot(dep_plt_df, aes(x = DeprivationIndex, col = Cluster)) +
+  geom_density(lwd = 1.5)
+
+dep_plt_df = data.frame(clusters5, confounders$dep_index)
+names(dep_plt_df) = c("Cluster","DeprivationIndex")
+dep_plt_df$Cluster = factor(dep_plt_df$Cluster)
+# dep_plt_df$DeprivationIndex = factor(dep_plt_df$DeprivationIndex)
+
+ggplot(dep_plt_df, aes(x = DeprivationIndex, col = Cluster)) +
+  geom_density(lwd = 1.5)
+
 
 ## PGA
 
@@ -402,49 +448,5 @@ ggplot(ibd_plt_df, aes(x = IBDdiagnosis, fill = Cluster)) +
 ggplot(ibd_plt_df, aes(fill = IBDdiagnosis, x = Cluster)) + 
   geom_bar(position = "dodge")
 
-## CD/UC
-cduc_plt_df = data.frame(clusters2, outcomes$CD_UC_dx)
-names(cduc_plt_df) = c("Cluster","CDvsUC")
-cduc_plt_df$Cluster = factor(cduc_plt_df$Cluster)
-cduc_plt_df$CDvsUC = factor(cduc_plt_df$CDvsUC)
 
-table(cduc_plt_df$Cluster,cduc_plt_df$CDvsUC)
-
-ggplot(cduc_plt_df, aes(x = CDvsUC, fill = Cluster)) + 
-  geom_bar(position = "dodge")
-
-ggplot(cduc_plt_df, aes(fill = CDvsUC, x = Cluster)) + 
-  geom_bar(position = "dodge")
-
-cduc_plt_df = data.frame(clusters5, outcomes$CD_UC_dx)
-names(cduc_plt_df) = c("Cluster","CDvsUC")
-cduc_plt_df$Cluster = factor(cduc_plt_df$Cluster)
-cduc_plt_df$CDvsUC = factor(cduc_plt_df$CDvsUC)
-
-table(cduc_plt_df$Cluster,cduc_plt_df$CDvsUC)
-
-ggplot(cduc_plt_df, aes(x = CDvsUC, fill = Cluster)) + 
-  geom_bar(position = "dodge")
-
-ggplot(cduc_plt_df, aes(fill = CDvsUC, x = Cluster)) + 
-  geom_bar(position = "dodge")
-
-
-## Dep index
-
-dep_plt_df = data.frame(clusters2, confounders$dep_index)
-names(dep_plt_df) = c("Cluster","DeprivationIndex")
-dep_plt_df$Cluster = factor(dep_plt_df$Cluster)
-# dep_plt_df$DeprivationIndex = factor(dep_plt_df$DeprivationIndex)
-
-ggplot(dep_plt_df, aes(x = DeprivationIndex, col = Cluster)) +
-  geom_density(lwd = 1.5)
-
-dep_plt_df = data.frame(clusters5, confounders$dep_index)
-names(dep_plt_df) = c("Cluster","DeprivationIndex")
-dep_plt_df$Cluster = factor(dep_plt_df$Cluster)
-# dep_plt_df$DeprivationIndex = factor(dep_plt_df$DeprivationIndex)
-
-ggplot(dep_plt_df, aes(x = DeprivationIndex, col = Cluster)) +
-  geom_density(lwd = 1.5)
 

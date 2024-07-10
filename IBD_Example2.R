@@ -2,14 +2,14 @@
 ## set working directory (file where your data is)
 setwd("C:/Users/ERDP5G/Desktop/Manuscripts/SNFProtocol/")
 
-## read in example data 
-in_dat = readRDS("IBD_Example1and2.rds")
-
 ### install metasnf if needed
 # devtools::install_github("BRANCHlab/metasnf")
 library(metasnf)
 library(SNFtool)
 library(ggplot2)
+
+## read in example data 
+in_dat = readRDS("IBD_Example1and2.rds")
 
 ## generate list of data that will be integrated 
 my_data_list = generate_data_list(
@@ -55,16 +55,17 @@ cat_confounders = c("sample_ids","race", "sex", "insurance_provider")
 cont_confounders = c("sample_ids","dep_index")
 
 ## create list of data you will use to compare with your SNF results
-target_list <- generate_target_list(
-  list(in_dat[["Outcomes"]][,cat_outcomes], "ClinicalCatTargets", "categorical"),
-  list(in_dat[["Outcomes"]][,cont_outcomes], "ClinicalContTargets", "numeric"),
-  list(in_dat[["Confounders" ]][,cat_confounders], "ConfoundersCat", "categorical"),
-  list(in_dat[["Confounders" ]][,cont_confounders], "ConfoundersCont", "numeric"),
-  uid = "sample_ids"
+target_list <- generate_data_list(
+  list(in_dat[["Outcomes"]][,cat_outcomes], "ClinicalCatTargets", "ClinicalCatTargets", "categorical"),
+  list(in_dat[["Outcomes"]][,cont_outcomes],"ClinicalContTargets", "ClinicalContTargets", "numeric"),
+  list(in_dat[["Confounders" ]][,cat_confounders],"ConfoundersCat", "ConfoundersCat", "categorical"),
+  list(in_dat[["Confounders" ]][,cont_confounders],"ConfoundersCont", "ConfoundersCont", "numeric"),
+  uid = "sample_ids", 
+  remove_missing = FALSE
 )
 
 ## summarize your target list
-summarize_target_list(target_list)
+summarize_dl(target_list)
 
 
       ###
@@ -87,14 +88,26 @@ solutions_matrix = batch_snf(my_data_list,
 ## cluster each of your SNF runs
 cluster_solutions = get_cluster_solutions(solutions_matrix)
 
-## create a matrix describine each of the SNF runs
-solutions_matrix_aris <- calc_om_aris(solutions_matrix)
+## create a matrix describing the adjusted Rand index for each of the SNF runs
+solutions_matrix_aris <- calc_aris(solutions_matrix)
+
+## get order of solutions matrix to apply going forward
+meta_cluster_order <- get_matrix_order(solutions_matrix_aris)
+
+heatmap_colours <- colorRampPalette(
+  rev(RColorBrewer::brewer.pal(n = 7, name = "RdYlBu"))
+)(100)
 
 ## plot a heatmap showing how similar each of the SNF runs are
-adjusted_rand_index_heatmap(solutions_matrix_aris)
+adjusted_rand_index_heatmap(
+  solutions_matrix_aris,
+  order = meta_cluster_order,
+  col = heatmap_colours,
+  show_row_names = TRUE,
+  show_column_names = TRUE,
+  rect_gp = grid::gpar(col = "gray", lwd = 1)
+)
 
-## extract order from SNF similarity heatmap (similarity of clustering solutions)
-meta_cluster_order <- get_heatmap_order(solutions_matrix_aris)
 
 ## plot settings matrix with same order at SNF similarity 
 settings_matrix_heatmap(settings_matrix, order = meta_cluster_order)
@@ -125,24 +138,29 @@ db_indices <- calculate_db_indices(solutions_matrix, similarity_matrices)
 
 ## find p-values of all your SNF cluster solutions and their associations
 ## with all the target variables -- outcomes and confounders here
-extended_solutions_matrix <- extend_solutions(solutions_matrix, target_list)
+extended_solutions_matrix <- extend_solutions(solutions_matrix, 
+                                              target_list)
+
 
 ## extract the p-values
-target_pvals <- p_val_select(extended_solutions_matrix)
+# get_pvals instead of pval_select
+target_pvals <- get_pvals(extended_solutions_matrix)
 
 ## create a heatmap of the p-values
-pvals_heatmap(target_pvals, order = meta_cluster_order)
+pval_heatmap(target_pvals, order = meta_cluster_order)
 
 
 #####
 ####  CHOOSE FINAL CLUSTERING SOLUTION, PLOT HEATMAP SOLUTION + MANHATTAN
 #####
 
-## choose your final clustering solution, here we choose the 9th
-my_sim = similarity_matrices[[2]]
+solution_no = 2
+
+## choose your final clustering solution, here we choose the 6th
+my_sim = similarity_matrices[[solution_no]]
 
 ## extract your cluster assignments
-my_clusts = unlist(solutions_matrix[2,grep(pattern = "subject",x = names(solutions_matrix))])
+my_clusts = unlist(solutions_matrix[solution_no, grep(pattern = "subject",x = names(solutions_matrix))])
 
 ## plot clusters using SNFtool package function
 displayClustersWithHeatmap(my_sim,my_clusts)
@@ -182,13 +200,15 @@ similarity_matrix_heatmap(
 ####
 
 ## extract p-values to plot (p-values of cluster solutions vs. target variables)
-target_pvals <- p_val_select(extended_solutions_matrix)
+target_pvals <- get_pvals(extended_solutions_matrix)
+
+target_pvals[solution_no, ]
 
 ## plot with bonferroni line
-manhattan_plot(target_pvals[2,], threshold = 0.05, bonferroni_line = FALSE)
+esm_manhattan_plot(extended_solutions_matrix[solution_no,], threshold = 0.05, bonferroni_line = TRUE)
 
 ## plot without bonferroni line
-manhattan_plot(target_pvals[2,], threshold = 0.05, bonferroni_line = TRUE)
+esm_manhattan_plot(extended_solutions_matrix[solution_no,], threshold = 0.05, bonferroni_line = FALSE)
 
 
 ####
@@ -198,27 +218,27 @@ manhattan_plot(target_pvals[2,], threshold = 0.05, bonferroni_line = TRUE)
 ## create data frame of outcomes
 outcomes = in_dat[["Outcomes"]]
 
-## create vector of clusters
-my_clusts2 = my_clusts
+# ## create vector of clusters
+# my_clusts6 = my_clusts
 ## change names to match sample IDs
-names(my_clusts2) = sub(pattern = "subject_",replacement = "",x = names(my_clusts))
+names(my_clusts) = sub(pattern = "subject_",replacement = "",x = names(my_clusts))
 
 ## match order of sample IDs in outcomes data frame
-my_clusts2_ordered = my_clusts2[match(outcomes$sample_ids,names(my_clusts2))]
+my_clusts_ordered = my_clusts[match(outcomes$sample_ids,names(my_clusts))]
 
 ## create a data frame of cluster assignments and age at diagnosis
-age_plt_df2 = data.frame(clusters = my_clusts2_ordered, Age_dx = outcomes$Age_dx)
-head(age_plt_df2)
+age_plt_df = data.frame(clusters = my_clusts_ordered, Age_dx = outcomes$Age_dx)
+head(age_plt_df)
 
 ## make clusters into a factor variable
-age_plt_df2$clusters = factor(age_plt_df2$clusters)
+age_plt_df$clusters = factor(age_plt_df$clusters, levels = 1:max(age_plt_df$clusters))
 
 theme_set(
-  theme_bw(base_size = 20)
+  theme_bw(base_size = 25)
 )
 
 ## plot density of age at diangosis vs. cluster assignment
-ggplot(age_plt_df2, aes(x = Age_dx, col = clusters)) + 
+ggplot(age_plt_df, aes(x = Age_dx, col = clusters)) + 
   geom_density(lwd = 1.5)
 
 
@@ -227,32 +247,32 @@ ggplot(age_plt_df2, aes(x = Age_dx, col = clusters)) +
 ####
 
 ## create vector of clusters
-my_clusts2 = my_clusts
+# my_clusts = my_clusts
 ## change names to match sample IDs
-names(my_clusts2) = sub(pattern = "subject_",replacement = "",x = names(my_clusts))
+# names(my_clusts) = sub(pattern = "subject_",replacement = "",x = names(my_clusts))
 
 ## match order of sample IDs in outcomes data frame
-my_clusts2_ordered = my_clusts2[match(outcomes$sample_ids,names(my_clusts2))]
+my_clusts_ordered = my_clusts[match(outcomes$sample_ids,names(my_clusts))]
 
 ## create a data frame of cluster assignments and age at diagnosis
-cduc_plt_df2 = data.frame(clusters = my_clusts2_ordered, CDvsUC = outcomes$CD_UC_dx)
-head(cduc_plt_df2)
+cduc_plt_df = data.frame(clusters = my_clusts_ordered, CDvsUC = outcomes$CD_UC_dx)
+head(cduc_plt_df)
 
 ## make clusters into a factor variable
-cduc_plt_df2$clusters = factor(cduc_plt_df2$clusters)
-cduc_plt_df2$CDvsUC = factor(cduc_plt_df2$CDvsUC, levels = 1:2, 
+cduc_plt_df$clusters = factor(cduc_plt_df$clusters, levels = 1:max(cduc_plt_df$clusters))
+cduc_plt_df$CDvsUC = factor(cduc_plt_df$CDvsUC, levels = 1:2, 
                              labels = c("Crohn's Disease","Ulcerative Colitis/IBD-U"))
-str(cduc_plt_df2$CDvsUC)
+str(cduc_plt_df$CDvsUC)
 
 theme_set(
-  theme_bw(base_size = 20)
+  theme_bw(base_size = 25)
 )
 
 ## plot density of age at diangosis vs. cluster assignment
-ggplot(cduc_plt_df2, aes(x = clusters, fill = CDvsUC)) + 
+ggplot(cduc_plt_df, aes(x = clusters, fill = CDvsUC)) + 
   geom_bar(stat="count",position="dodge")
 
-ggplot(cduc_plt_df2, aes(x = CDvsUC, fill = clusters)) + 
+ggplot(cduc_plt_df, aes(x = CDvsUC, fill = clusters)) + 
   geom_bar(stat="count",position="dodge")
 
 
@@ -261,31 +281,31 @@ ggplot(cduc_plt_df2, aes(x = CDvsUC, fill = clusters)) +
 ####
 
 ## create vector of clusters
-my_clusts2 = my_clusts
+# my_clusts2 = my_clusts
 ## change names to match sample IDs
-names(my_clusts2) = sub(pattern = "subject_",replacement = "",x = names(my_clusts))
+# names(my_clusts) = sub(pattern = "subject_",replacement = "",x = names(my_clusts))
 
 ## match order of sample IDs in outcomes data frame
-my_clusts2_ordered = my_clusts2[match(outcomes$sample_ids,names(my_clusts2))]
+my_clusts_ordered = my_clusts[match(outcomes$sample_ids,names(my_clusts))]
 
 ## create a data frame of cluster assignments and age at diagnosis
-pga_plt_df2 = data.frame(clusters = my_clusts2_ordered, PGA = outcomes$PGA_dx)
-head(pga_plt_df2)
+pga_plt_df = data.frame(clusters = my_clusts_ordered, PGA = outcomes$PGA_dx)
+head(pga_plt_df)
 
 ## make clusters into a factor variable
-pga_plt_df2$clusters = factor(pga_plt_df2$clusters)
-pga_plt_df2$IBDSeverity = factor(pga_plt_df2$PGA, levels = 2:4, 
+pga_plt_df$clusters = factor(pga_plt_df$clusters)
+pga_plt_df$IBDSeverity = factor(pga_plt_df$PGA, levels = 2:4, 
                              labels = c("mild","moderate","severe"))
-str(pga_plt_df2$IBDSeverity)
+str(pga_plt_df$IBDSeverity)
 
 theme_set(
   theme_bw(base_size = 20)
 )
 
 ## plot density of age at diangosis vs. cluster assignment
-ggplot(pga_plt_df2, aes(x = clusters, fill = IBDSeverity)) + 
+ggplot(pga_plt_df, aes(x = clusters, fill = IBDSeverity)) + 
   geom_bar(stat="count",position="dodge")
 
-ggplot(pga_plt_df2, aes(x = IBDSeverity, fill = clusters)) + 
+ggplot(pga_plt_df, aes(x = IBDSeverity, fill = clusters)) + 
   geom_bar(stat="count",position="dodge")
 

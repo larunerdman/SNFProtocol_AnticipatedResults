@@ -2,6 +2,12 @@
 ## Set working directory
 setwd("C:/Users/ERDP5G/Desktop/Manuscripts/SNFProtocol/")
 
+### install metasnf if needed
+# devtools::install_github("BRANCHlab/metasnf", force = TRUE)
+library(metasnf)
+library(SNFtool)
+library(ggplot2)
+
 ## Read in data set
 in_ibd = readRDS("IBD_Example3.rds")
 
@@ -12,7 +18,6 @@ dim(in_ibd)
 ## Distribution of variable of interest: 
   ## IBD diagnosis, 1 = ulcerative colitis, 2 = Crohn's disease
 table(in_ibd$IBD_dx)
-
 
     ### 
     ###   SPLIT DATA SET: 14 TEST SAMPLES 
@@ -39,7 +44,6 @@ apply(ibd_train, 2, table)
     ####
     ### DEFINE FEATURE SPLITS BY SOURCE
     ####
-
 
 hist.features <- c("Granuloma","focal_chronic_duodenitis", "focal_active_colitis", "FEG", 
                    "ileitis_mild_cecum", "pattern_involvement_worse.distally",
@@ -79,10 +83,6 @@ neglog10p_val = sapply(p_vals, function(x){
   -log10(x)
 })
 
-p_val_weights = sapply(neglog10p_val, function(x){
-  x/sum(na.omit(neglog10p_val))
-})
-
 var_group = c(rep("Histology", length(hist_assoc)),
               rep("Endoscopy", length(endosc_assoc)),
               rep("Clinical Observation", length(clin.obs_assoc)))
@@ -118,10 +118,17 @@ ggplot(p_out, aes(x = Features, y = neglog10p, col = FeatureGroup)) +
   guides(color = guide_legend(title = "Data Source"))
 
 
-### split data and update code below
+  ###
+  ###   DEFINE WEIGHTS
+  ###
 
-# devtools::install_github("BRANCHlab/metasnf")
-library(metasnf)
+p_val_weights = sapply(neglog10p_val, function(x){
+  x/sum(na.omit(neglog10p_val))
+})
+
+  ###
+  ###   metaSNF
+  ###
 
 ibd_dl_results = generate_data_list(
   list(
@@ -152,8 +159,8 @@ summarize_dl(data_list = ibd_data_list)
 ibd_settings_matrix <- generate_settings_matrix(
   ibd_dl_results,
   nrow = 20,
-  min_k = 10,
-  max_k = 30,
+  min_k = 15,
+  max_k = 25,
   seed = 42
 )
 
@@ -172,14 +179,30 @@ ibd_solutions_matrix = batch_snf(ibd_dl_results,
 
 ibd_cluster_solutions = get_cluster_solutions(ibd_solutions_matrix)
 
+solutions_matrix_aris <- calc_aris(ibd_solutions_matrix)
 
-ibd_solutions_matrix_aris <- calc_om_aris(ibd_solutions_matrix)
+meta_cluster_order <- get_matrix_order(solutions_matrix_aris)
 
-adjusted_rand_index_heatmap(ibd_solutions_matrix_aris)
+# adjusted_rand_index_heatmap(
+#   solutions_matrix_aris,
+#   order = meta_cluster_order
+# )
 
-ibd_meta_cluster_order <- get_heatmap_order(ibd_solutions_matrix_aris)
+heatmap_colours <- colorRampPalette(
+  rev(RColorBrewer::brewer.pal(n = 7, name = "RdYlBu"))
+)(100)
 
-settings_matrix_heatmap(ibd_settings_matrix, order = ibd_meta_cluster_order)
+adjusted_rand_index_heatmap(
+  solutions_matrix_aris,
+  order = meta_cluster_order,
+  col = heatmap_colours,
+  show_row_names = TRUE,
+  show_column_names = TRUE,
+  rect_gp = grid::gpar(col = "gray", lwd = 1)
+)
+
+settings_matrix_heatmap(ibd_settings_matrix, order = meta_cluster_order)
+
 
 ibd_batch_snf_results <- batch_snf(
   ibd_data_list,
@@ -198,32 +221,34 @@ ibd_confounders_cat = c("provider")
 
 
 ### split these up by data type
-ibd_target_list <- generate_target_list(
-  list(ibd_train[,c("ID", ibd_outcomes)], "IBDOutcomes", "categorical"),
-  list(ibd_train[,c("ID", ibd_confounders_cat)], "IBDConfoundersCat", "categorical"),
-  list(ibd_train[,c("ID", ibd_confounders_cont)], "IBDConfoundersCont", "numeric"),
+ibd_target_list <- generate_data_list(
+  list(ibd_train[,c("ID", ibd_outcomes)], "IBDOutcomes", "IBDOutcomes", "categorical"),
+  list(ibd_train[,c("ID", ibd_confounders_cat)], "IBDConfoundersCat", "IBDConfoundersCat", "categorical"),
+  list(ibd_train[,c("ID", ibd_confounders_cont)], "IBDConfoundersCont","IBDConfoundersCont", "numeric"),
   uid = "ID"
 )
 
-summarize_target_list(ibd_target_list)
+summarize_dl(ibd_target_list)
 
 ibd_extended_solutions_matrix <- extend_solutions(ibd_solutions_matrix, 
                                                   ibd_target_list, cat_test = "fisher_exact")
 
-ibd_target_pvals <- p_val_select(ibd_extended_solutions_matrix)
+ibd_target_pvals <- get_pvals(ibd_extended_solutions_matrix)
 
 head(ibd_target_pvals)
 
-pvals_heatmap(ibd_target_pvals, order = ibd_meta_cluster_order)
+ibd_target_pvals_sub = ibd_target_pvals[,1:4]
+
+pval_heatmap(ibd_target_pvals_sub, order = meta_cluster_order)
 
 
-###
-###     SNF HEATMAP
-###
+  ###
+  ###     SNF HEATMAP
+  ###
 
 similarity_matrix_heatmap(
-  similarity_matrix = ibd_similarity_matrices[[12]],
-  cluster_solution = ibd_cluster_solutions$"17",
+  similarity_matrix = ibd_similarity_matrices[[9]],
+  cluster_solution = ibd_cluster_solutions$"9",
   scale_diag = "mean",
   log_graph = TRUE,
   data_list = ibd_target_list,
@@ -235,81 +260,99 @@ similarity_matrix_heatmap(
 )
 
 
-####
-###   MANHATTAN PLOT OF EACH INTEGRATED FEATURE VS. THE SELECTED CLUSTER SOLUTION 
-####
+  ####
+  ###   MANHATTAN PLOT OF EACH INTEGRATED FEATURE, CONFOUNDER, AND TARGET VS. THE SELECTED CLUSTER SOLUTION 
+  ####
 
-## Test selected 
-ibd_features_extended_solutions_matrix <- extend_solutions(ibd_extended_solutions_matrix[12, ], 
-                                                           ibd_data_list, cat_test = "fisher_exact")
+###  Extract clustering from top solution
+select_cluster_sol = ibd_cluster_solutions$"9"
 
-ibd_feature_snf_pvals <- p_val_select(ibd_features_extended_solutions_matrix)
+### Find p-value associations 
+hist_clust_assoc = sapply(hist.features, function(x){
+  fisher.test(ibd_train[,x],select_cluster_sol)$p.val
+})
 
-### to automatically plot with metasnf package
-# manhattan_plot(ibd_feature_snf_pvals, threshold = 0.05, bonferroni_line = FALSE)
+endosc_clust_assoc = sapply(endosc.features, function(x){
+  if(length(unique(ibd_train[,x])) > 1){
+    fisher.test(ibd_train[,x],select_cluster_sol)$p.val
+  } else{
+    NA
+  }
+})
 
-# manhattan_plot(target_pvals, threshold = 0.05)
+clin.obs_clust_assoc = sapply(clin.obs.features, function(x){
+  if(length(unique(ibd_train[,x])) > 1){
+    fisher.test(ibd_train[,x],select_cluster_sol)$p.val
+  } else{
+    NA
+  }
+})
 
-### a more descriptive manhattan plot 
 
-cluster_assoc = data.frame(pvals = unlist(ibd_feature_snf_pvals[2:length(ibd_feature_snf_pvals)]),
-                           features = unlist(names(ibd_feature_snf_pvals)[2:length(ibd_feature_snf_pvals)]),
-                           Features = c("IBD_dx", "Provider", "Age_at_dx",                               
-                                        "Granuloma", "Focal Chronic Duodenitis",
-                                        "Focal Active Colitis","FEG", "Ileitis Mild Cecum",
-                                        "Pattern Involvement Worst Distally", 
-                                        "Basal Plasma Cells", "Activity",
-                                        "Gastritis", "Duodenitis",
-                                        "Crypt Distortion","Chronic Inflammation",
-                                        "Classic Backwash","Ileal Inflammation",
-                                        "Reverse Gradient", "Small Ulcers SB", "Small Colonic Ulcers",
-                                        "<5 Colon Ulcers", "Skip Lesion",
-                                        "Relative Patchiness", "Inflammed Tag",
-                                        "Non-Bloody Diarrhea"), 
-                           FeatureGroups = c("Target","Confounder","Confounder",
-                                             "Histology","Histology",
-                                             "Histology","Histology",
-                                             "Histology","Histology",
-                                             "Histology","Histology",
-                                             "Histology","Histology",
-                                             "Histology","Histology",
-                                             "Endoscopy","Endoscopy",
-                                             
-                                             "Endoscopy","Endoscopy",
+age_clust_assoc = kruskal.test(ibd_train$age, select_cluster_sol)$p.val
 
-                                             "Endoscopy","Endoscopy",
-                                             "Endoscopy","Endoscopy",
-                                             
-                                             "Clinical Observation","Clinical Observation"))
+provider_clust_assoc = fisher.test(ibd_train$provider, select_cluster_sol)$p.val
 
-cluster_assoc$Features = factor(cluster_assoc$Features,
-                                levels = cluster_assoc$Features)
+ibd_clust_assoc = fisher.test(ibd_train$IBD_dx, select_cluster_sol)$p.val
 
-cluster_assoc$FeatureGroups = factor(cluster_assoc$FeatureGroups, 
-                                     levels = c("Target","Confounder",
-                                                "Clinical Observation","Endoscopy","Histology"))
-cluster_assoc$nlogp = -log10(cluster_assoc$pvals)
+p_vals_clust = c(hist_clust_assoc,endosc_clust_assoc,clin.obs_clust_assoc, age_clust_assoc,
+                 provider_clust_assoc, ibd_clust_assoc)
+names(p_vals_clust)[23:25] = c("Age_at_dx","Provider","IBD_dx")
 
-str(cluster_assoc)
+neglog10p_clust_val = sapply(p_vals_clust, function(x){
+  -log10(x)
+})
 
-ggplot(data = cluster_assoc, aes(x = Features, y = nlogp, col = FeatureGroups)) + 
+var_group = c(rep("Histology", length(hist_clust_assoc)),
+              rep("Endoscopy", length(endosc_clust_assoc)),
+              rep("Clinical Observation", length(clin.obs_clust_assoc)),
+              rep("Confounder", 2),
+              "Target")
+
+p_clust_out = data.frame(names(p_vals_clust), p_vals_clust, var_group)
+names(p_clust_out) = c("Feature","p.value","FeatureGroup")
+p_clust_out$neglog10p = -log10(p_clust_out$p.value)
+p_clust_out$Feature = factor(p_clust_out$Feature, levels = p_clust_out$Feature)
+
+## Create nicer column names
+p_clust_out$Features = c("Granuloma", "Focal Chronic Duodenitis",
+                   "Focal Active Colitis","FEG", "Ileitis Mild Cecum",
+                   "Pattern Involvement Worst Distally", 
+                   "Basal Plasma Cells", "Activity",
+                   "Gastritis", "Duodenitis",
+                   "Crypt Distortion","Chronic Inflammation",
+                   "Classic Backwash","Ileal Inflammation",
+                   "Reverse Gradient", "Small Ulcers SB", "Small Colonic Ulcers",
+                   "<5 Colon Ulcers", "Skip Lesion",
+                   "Relative Patchiness", "Inflammed Tag",
+                   "Non-Bloody Diarrhea", "Age_at_dx","Provider","IBD_dx")
+
+p_clust_out$Features = factor(p_clust_out$Features, levels = p_clust_out$Features)
+
+library(ggplot2)
+
+theme_set(
+  theme_bw(base_size = 15)
+)
+ggplot(p_clust_out, aes(x = Features, y = neglog10p, col = FeatureGroup)) + 
   geom_point(size = 3) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
   ylab("-log(p-value)") + geom_hline(yintercept = -log10(0.05), col = "red", lty = 2, lwd = 1) + 
-  scale_color_manual(values = c("#C77CFF","#C68613",
-                                "#F8766D","#0CB702","#00A9FF"),name = "Data Source") + 
-  xlab("Target variable, Confounding variables, Integrated features")
+  guides(color = guide_legend(title = "Data Source")) + 
+  xlab("Features, Confounders, Target")
 
 
-###
-###     LABEL PROPAGATION
-###
+  ###
+  ###     LABEL PROPAGATION
+  ###
 
+## Create full dataset with training and testing data
 ibd_ids_vec = c(ibd_train$ID, ibd_test$ID)
 ibd_traintest_vec = c(rep("train",length(ibd_train$ID)),
                       rep("test",length(ibd_test$ID)))
 ibd_assigned_splits = data.frame(ibd_ids_vec, ibd_traintest_vec)
 names(ibd_assigned_splits) = c("subjectkey","split")
 
+## Create full data list object
 ibd_full_data_list = generate_data_list(
   list(
     data = in_ibd[match(ibd_ids_vec,in_ibd$ID),
@@ -332,63 +375,40 @@ ibd_full_data_list = generate_data_list(
     domain = "ClinObservation",
     type = "categorical"
   ),
-  uid = "ID",
-  assigned_splits = ibd_assigned_splits
+  uid = "ID"
 )
 
-ibd_top_row = ibd_extended_solutions_matrix[12, ]
 
-# We start with the order of training subjects in the solutions matrix
-train_subjects <- colnames(subs(ibd_top_row))[-1] # the -1 removes the "row_id" column
-
-## a function to extract subject names
-dl_subjects <- function(data_list, remove_prefix = TRUE) {
-  subjects <- data_list[[1]]$"data"$"subjectkey"
-  if (remove_prefix) {
-    subjects <- gsub("subject_", "", subjects)
-  }
-  return(subjects)
-}
-
-# This is a vector containing unordered training and testing subjects
-train_and_test_subjects <- dl_subjects(ibd_full_data_list, remove_prefix = FALSE)
-
-# This is a vector containing just test subjects
-test_subjects <- train_and_test_subjects[!train_and_test_subjects %in% train_subjects]
-
-# The full subject order will be the training order (matching the order in the
-#  solutions matrix) + the test subjects in any order
-valid_subject_order <- c(train_subjects, test_subjects)
-
-# Reorder the data list so that patients are ordered by valid_subject_order
-full_data_list_reordered <- lapply(ibd_full_data_list,
-                                   function(x) {
-                                     x$"data" <- x$"data"[match(valid_subject_order, x$"data"$"subjectkey"), ]
-                                     return(x)
-                                   }
+train_solutions_matrix <- batch_snf(
+  ibd_data_list,
+  ibd_settings_matrix
 )
 
-# Now the label propagation works
-ibd_propagated_labels <- lp_row(ibd_top_row, full_data_list_reordered)
+# Generated predicted clustering for all 
+extended_solutions_matrix <- lp_solutions_matrix(
+  train_solutions_matrix,
+  ibd_full_data_list
+)
 
-# Extract original IDs
-ibd_propagated_labels$ID = sub(pattern = "subject_",replacement = "",x = ibd_propagated_labels$subjectkey)
-str(ibd_propagated_labels)
+ibd_propagated_labels = extended_solutions_matrix[,c("subjectkey","group","9")]
 names(ibd_propagated_labels)[3] = "SNF_group"
+ibd_propagated_labels$ID = sub(pattern = "subject_",replacement = "",x = ibd_propagated_labels$subjectkey)
 
-## Check structure of outcomes and confounders
-str(in_ibd[,c("ID", ibd_outcomes)])
-str(in_ibd[,c("ID", ibd_confounders)])
+  ####
+  ###   CLUSTER ~ TARGET ASSOCIATIONS
+  ####
 
 ## Merging cluster label, outcomes, and confounders to test and plot these individually
 merged_ibd_outcomes = merge(ibd_propagated_labels, in_ibd[,c("ID", ibd_outcomes)],by = "ID")
 merged_ibd_outcomes$Cluster = factor(merged_ibd_outcomes$SNF_group, levels = c(1,2), labels = c("Group 1", "Group 2"))
-merged_ibd_confounders = merge(ibd_propagated_labels, in_ibd[,c("ID", ibd_confounders)], by = "ID")
+merged_ibd_confounders = merge(ibd_propagated_labels, in_ibd[,c("ID", ibd_outcomes)], by = "ID")
 
+    ## Training sample graph
 barplot(table(merged_ibd_outcomes$IBD_dx[merged_ibd_outcomes$group == "train"],
               merged_ibd_outcomes$Cluster[merged_ibd_outcomes$group == "train"]),
         beside = TRUE, col = c("firebrick","deeppink2"))
 
+    ## Test/held-out sample graph
 barplot(table(merged_ibd_outcomes$IBD_dx[merged_ibd_outcomes$group == "test"],
               merged_ibd_outcomes$Cluster[merged_ibd_outcomes$group == "test"]),
         beside = TRUE, col = c("firebrick","deeppink2"))
